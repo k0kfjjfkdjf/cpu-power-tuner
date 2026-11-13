@@ -376,4 +376,4 @@ moved to core 3 at 52 °C and stayed there for the remaining 2.7 minutes. Core 0
 | `results/` | survey and test results from the author's laptop, summary in `FINDINGS.md` (Russian) |
 | `docs/` | screenshots |
 
-License: not chosen yet — all rights reserved by the author until a license file is added.
+License: [MIT](LICENSE).

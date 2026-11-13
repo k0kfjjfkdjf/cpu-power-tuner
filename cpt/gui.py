@@ -71,6 +71,11 @@ def label(text="", css=(), xalign=0.0, wrap=False, markup=False):
     return lb
 
 
+def core_name(k):
+    k = int(k)
+    return f"п{k // 1000} ядро {k % 1000}" if k >= 1000 else f"ядро {k}"
+
+
 def clear(box):
     while (c := box.get_first_child()) is not None:
         box.remove(c)
@@ -223,7 +228,7 @@ class MetricsPanel(Gtk.Box):
         M.append(Metric("battery", g, "Батарея", " %", 0, 100,
                         lambda s: ((s.get("power_supply") or {}).get("battery") or {}).get("capacity")))
         for core in sorted(first_status.get("core_temps", {}), key=int):
-            M.append(Metric(f"core{core}", "Температура ядер", f"Ядро {core}", " °C", 30, tj,
+            M.append(Metric(f"core{core}", "Температура ядер", core_name(core).capitalize(), " °C", 30, tj,
                             lambda s, c=core: (s.get("core_temps") or {}).get(c)))
         for t in first_status.get("threads", []):
             cpu = t["cpu"]
@@ -232,7 +237,7 @@ class MetricsPanel(Gtk.Box):
                 for x in s.get("threads", []):
                     if x["cpu"] == cpu:
                         return x.get("mhz")
-            m = Metric(f"cpu{cpu}", "Потоки: частота · использование", f"CPU {cpu} (ядро {t['core']})",
+            m = Metric(f"cpu{cpu}", "Потоки: частота · использование", f"CPU {cpu} ({core_name(t['core'])})",
                        " МГц", 0, maxf, getter)
             M.append(m)
         for i, m in enumerate(M):
@@ -442,14 +447,15 @@ class PresetsPage(Gtk.Stack):
                 "pl1_w": f"{fac['pl1_uw'] / 1e6:g} Вт" if fac.get("pl1_uw") else "—",
                 "pl2_w": f"{fac['pl2_uw'] / 1e6:g} Вт" if fac.get("pl2_uw") else "—",
                 "temp_limit_c": f"{tj - fac['tcc_offset']} °C" if fac.get("tcc_offset") is not None else "—",
-                "turbo": {0: "вкл", 1: "выкл"}.get(fac.get("no_turbo"), "—"),
+                "turbo": {True: "вкл", False: "выкл"}.get(fac.get("turbo"), "—"),
                 "max_freq_mhz": f"{caps.get('max_freq_mhz')} МГц",
                 "boost_temp_c": "не ограничен", "epp": "как ставит ppd", "smart": "выключен",
-                "park": "выключена",
+                "park": "выключена", "focus": "выключено",
             },
             "available": {"pl1_w": caps.get("rapl"), "pl2_w": caps.get("rapl"), "temp_limit_c": caps.get("tcc"),
-                          "turbo": caps.get("no_turbo"), "max_freq_mhz": True, "boost_temp_c": caps.get("no_turbo"),
-                          "epp": caps.get("epp"), "smart": True, "park": True},
+                          "turbo": caps.get("turbo"), "max_freq_mhz": True, "boost_temp_c": caps.get("turbo"),
+                          "epp": caps.get("epp"), "smart": caps.get("per_core_temps"), "park": caps.get("per_core_temps"),
+                          "focus": True},
         }
         self.reload()
 
@@ -535,7 +541,10 @@ class PresetsPage(Gtk.Stack):
             sv = p["smart"]["value"]
             bits.append(f"умный: {sv['trigger_c']} °C → {sv['core_mhz']} МГц")
         if p.get("park", {}).get("enabled"):
-            bits.append(f"парковка с {p['park']['value']['trigger_c']} °C")
+            pv = p["park"]["value"]
+            bits.append(f"парковка с {pv['trigger_c']} °C" + (" навсегда" if not pv["hold_s"] else ""))
+        if p.get("focus", {}).get("enabled"):
+            bits.append(f"активное окно → {p['focus']['value']['cores']} холодн. ядра")
         return " · ".join(bits) or "всё заводское"
 
     def _card(self, pid, p):
@@ -818,10 +827,15 @@ class SystemPage(Gtk.ScrolledWindow):
             f"<b>{GLib.markup_escape_text(c['model'])}</b>\n"
             f"{c['cores']} ядер / {c['threads']} потоков · {c['min_freq_mhz']}–{c['max_freq_mhz']} МГц, база {c['base_freq_mhz']} МГц · Tjmax {c['tjmax']} °C\n"
             f"RAPL (MSR): {yes(c['rapl'])} · RAPL прошивки (MMIO): {yes(c['rapl_mmio'])} · TCC offset: {yes(c['tcc'])} (до {c['tcc_max']} °C)\n"
-            f"Турбо: {yes(c['no_turbo'])} · EPP: {', '.join(c['epp_choices']) or 'нет'} · встройка: {yes(c['gpu'])}\n\n"
+            f"Турбо: {yes(c['turbo'])}{' (' + c['turbo_kind'] + ')' if c['turbo_kind'] else ''} · "
+            f"EPP: {', '.join(c['epp_choices']) or 'нет'} · встройка: {yes(c['gpu'])}{' (' + c['gpu_kind'] + ')' if c['gpu_kind'] else ''}\n"
+            f"Драйвер частоты: {c['driver']} · процессоров: {c['packages']} · гибридный (P/E): {'да' if c['hybrid'] else 'нет'}\n"
+            f"Температуры: {GLib.markup_escape_text(c['temp_source'])}"
+            + ("" if c["per_core_temps"] else " — <span foreground='#ffbe6f'>датчиков по ядрам нет: умный троттлинг и парковка недоступны</span>")
+            + "\n\n"
             f"<b>Заводские значения</b> (сняты {f.get('captured', '?')}): PL1 {w('pl1_uw')}, PL2 {w('pl2_uw')}, "
             f"порог {c['tjmax'] - f['tcc_offset'] if 'tcc_offset' in f else '—'} °C, "
-            f"турбо {'выкл' if f.get('no_turbo') else 'вкл'}")
+            f"турбо {'вкл' if f.get('turbo', True) else 'выкл'}")
 
     def update(self, s):
         self.events.set_label("\n".join(reversed(s.get("events") or [])) or "—")
@@ -861,6 +875,7 @@ class Window(Gtk.ApplicationWindow):
         self.caps = None
         self.factory = {}
         self.profile = None
+        self.manual_profile = False
         self._switching = False
 
         hb = Gtk.HeaderBar()
@@ -880,7 +895,8 @@ class Window(Gtk.ApplicationWindow):
             self.prof_btns[p] = b
             pbox.append(b)
         hb.pack_end(pbox)
-        hb.pack_start(label("профиль ppd:", ("dim", "small")))
+        self.ppd_label = label("профиль ppd:", ("dim", "small"))
+        hb.pack_start(self.ppd_label)
         self.set_titlebar(hb)
 
         root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -938,6 +954,8 @@ class Window(Gtk.ApplicationWindow):
         self.system.update(s)
         self._statusline(s)
         self.presets.update_badges(s)
+        self.manual_profile = bool(s.get("manual_profile"))
+        self.ppd_label.set_label("профиль (вручную, без ppd):" if self.manual_profile else "профиль ppd:")
         prof = s.get("profile")
         if prof != self.profile:
             self.profile = prof
@@ -959,17 +977,27 @@ class Window(Gtk.ApplicationWindow):
             chain += f" → работает <b>{nm(s.get('static_preset'))}</b>"
         parts = [
             f"Пресет: {chain} <span alpha='65%'>({GLib.markup_escape_text(s.get('reason') or '')})</span>",
-            f"PL1 {pl('pl1_uw')} / PL2 {pl('pl2_uw')} Вт"
-            + (f" <span alpha='65%'>(прошивка {pl('mmio_pl1_uw')})</span>" if ctl.get("mmio_pl1_uw") else ""),
+            (f"PL1 {pl('pl1_uw')} / PL2 {pl('pl2_uw')} Вт"
+             + (f" <span alpha='65%'>(прошивка {pl('mmio_pl1_uw')})</span>" if ctl.get("mmio_pl1_uw") else ""))
+            if ctl.get("pl1_uw") else "",
             f"порог {tj - ctl['tcc_offset']} °C" if ctl.get("tcc_offset") is not None else "",
-            "турбо " + ("выкл" if ctl.get("no_turbo") else "вкл"),
+            ("турбо " + ("вкл" if ctl["turbo"] else "выкл")) if ctl.get("turbo") is not None else "",
             "потолок " + "/".join(map(str, mf)) + " МГц" if mf else "",
             f"EPP {ctl.get('epp')}" if ctl.get("epp") else "",
         ]
+        if s.get("grace"):
+            parts.append("<span foreground='#f6d32d'>остужаю парковкой: ядра " + ", ".join(s["grace"]) + "</span>")
         if s.get("hot_cores"):
             parts.append(f"<span foreground='#ff6b6b'><b>остывают ядра: {', '.join(map(str, s['hot_cores']))}</b></span>")
+        fo = s.get("focus") or {}
+        if fo.get("cores"):
+            parts.append(f"<span foreground='#57e389'>в фокусе: {GLib.markup_escape_text(fo['name'])} → ядра "
+                         f"{','.join(map(str, fo['cores']))}</span>")
+        elif fo.get("note"):
+            parts.append(f"<span alpha='65%'>активное окно: {GLib.markup_escape_text(fo['note'])}</span>")
         if s.get("parked"):
-            pk = ", ".join(f"{GLib.markup_escape_text(x['comm'])} я{x['from']}→я{x['to']} ({x['left']} с)" for x in s["parked"])
+            pk = ", ".join(f"{GLib.markup_escape_text(x['comm'])} я{x['from']}→я{x['to']} "
+                           f"({'∞' if x['left'] is None else str(x['left']) + ' с'})" for x in s["parked"])
             parts.append(f"<span foreground='#2ee6d6'>припаркованы: {pk}</span>")
         if s.get("boost_off"):
             parts.append("<span foreground='#ff6b6b'><b>буст выключен по температуре</b></span>")
@@ -979,6 +1007,13 @@ class Window(Gtk.ApplicationWindow):
 
     def _profile_clicked(self, btn, prof):
         if self._switching or not btn.get_active() or prof == self.profile:
+            return
+        if self.manual_profile:  # power-profiles-daemon нет — профиль хранит служба
+            try:
+                self.client.request(cmd="set_profile", profile=prof)
+            except DaemonError as e:
+                self.banner.set_label(f"Не удалось переключить профиль: {e}")
+                self.banner.set_visible(True)
             return
         try:
             Gio.Subprocess.new(["powerprofilesctl", "set", prof], Gio.SubprocessFlags.NONE)

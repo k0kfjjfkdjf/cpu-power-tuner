@@ -16,12 +16,14 @@ import socketserver
 import threading
 import time
 
-from . import config, hw, park
+from . import config, focus, hw, park
 
 SOCKET_PATH = os.environ.get("CPT_SOCKET", "/run/cpu-power-tuner/sock")
 FACTORY_PATH = os.path.join(config.STATE_DIR, "factory.json")
+PINS_PATH = os.path.join(config.STATE_DIR, "pins.json")   # что служба привязала к ядрам — для уборки после сбоя
 TICK = 0.5
 BOOST_HYST = 5  # °C
+GRACE_HYST = 2  # °C: ядро в отсрочке считается остывшим только на 2 °C ниже порога (датчик шагает по 1 °C)
 
 log = logging.getLogger("cpt")
 
@@ -35,8 +37,9 @@ class Tuner:
             config.save(self.cfg)
         self.factory = self._load_or_capture_factory()
         self.sampler = hw.Sampler(self.hw)
-        self.profile = None              # профиль ppd
+        self.profile = None              # профиль ppd (или выбранный вручную, если ppd нет)
         self.ppd_mtime = None
+        self.manual = not hw.ppd_available()  # без power-profiles-daemon профиль выбирается в GUI/CLI
         self.epp_ppd = self.hw.read_epp() if self.hw.has_epp else None   # что ставит ppd
         self.epp_written = None          # что последним записали мы
         self.static_id = None            # какой статический пресет реально работает
@@ -45,10 +48,12 @@ class Tuner:
         self.on_ac = None
         # оверлей
         self.hot_until = {}              # core -> monotonic time
+        self.grace_start = {}            # core -> когда началась отсрочка троттлинга (даём парковке остудить)
         self.boost_off = False
         self.last_changes, self.last_errors, self.last_apply = [], [], None
         self.events = []                 # последние события для GUI
         self.parker = park.Parker(self.hw, self.event)
+        self.focus = focus.Focus(self.hw, self.event)
 
     def event(self, msg):
         log.info(msg)
@@ -59,11 +64,14 @@ class Tuner:
     def _load_or_capture_factory(self):
         try:
             with open(FACTORY_PATH) as f:
-                return json.load(f)
+                fac = json.load(f)
+            if "no_turbo" in fac and "turbo" not in fac:  # формат старых версий
+                fac["turbo"] = not fac.pop("no_turbo")
+            return fac
         except (OSError, ValueError):
             pass
         c = self.hw.read_controls()
-        fac = {k: c[k] for k in ("pl1_uw", "pl2_uw", "tcc_offset", "no_turbo") if c.get(k) is not None}
+        fac = {k: c[k] for k in ("pl1_uw", "pl2_uw", "tcc_offset", "turbo") if c.get(k) is not None}
         fac["captured"] = time.strftime("%Y-%m-%d %H:%M:%S")
         os.makedirs(config.STATE_DIR, exist_ok=True)
         with open(FACTORY_PATH, "w") as f:
@@ -116,21 +124,22 @@ class Tuner:
                 t["tcc_offset"] = h.tjmax - int(val("temp_limit_c"))
             elif "tcc_offset" in fac:
                 t["tcc_offset"] = fac["tcc_offset"]
-        if h.has_no_turbo:
-            nt = fac.get("no_turbo", 0)
+        if h.turbo_kind:
+            turbo = fac.get("turbo", True)
             if on("turbo"):
-                nt = 0 if val("turbo") else 1
+                turbo = bool(val("turbo"))
             if on("boost_temp_c") and self.boost_off:
-                nt = 1
-            t["no_turbo"] = nt
+                turbo = False
+            t["turbo"] = turbo
         if h.cpus and h.max_freq_khz:
-            base = min(int(val("max_freq_mhz")) * 1000, h.max_freq_khz) if on("max_freq_mhz") else h.max_freq_khz
-            per = {c: base for c in h.cpus}
+            # у гибридных процессоров у P- и E-ядер свой максимум: потолок не выше собственного максимума потока
+            per = {c: (min(int(val("max_freq_mhz")) * 1000, h.max_khz[c]) if on("max_freq_mhz") else h.max_khz[c])
+                   for c in h.cpus if h.max_khz.get(c)}
             if on("smart"):
-                cap = max(int(val("smart")["core_mhz"]) * 1000, h.min_freq_khz)
                 for core in self.hot_cores():
                     for c in h.threads_of_core(core):
-                        per[c] = min(per[c], cap)
+                        if c in per:
+                            per[c] = min(per[c], max(int(val("smart")["core_mhz"]) * 1000, h.min_khz.get(c, 0)))
             t["max_freq"] = per
         if h.has_epp:
             t["epp"] = val("epp") if on("epp") else self.epp_ppd
@@ -144,7 +153,7 @@ class Tuner:
         changes, errors = [], []
         h = self.hw
         for key, fn in (("rapl", lambda v: h.set_rapl(*v)), ("tcc_offset", h.set_tcc_offset),
-                        ("no_turbo", h.set_no_turbo), ("max_freq", h.set_max_freq), ("epp", h.set_epp)):
+                        ("turbo", h.set_turbo), ("max_freq", h.set_max_freq), ("epp", h.set_epp)):
             v = targets.get(key)
             if v is None:
                 continue
@@ -164,17 +173,40 @@ class Tuner:
         self.last_errors = errors
         return changes, errors
 
+    def unpin(self, why, deep=False):
+        n = park.restore_saved_pins(PINS_PATH)
+        if deep:
+            n += park.unpin_orphans(self.hw, keep=set(self.parker.parked) | self.focus.tids())
+        if n:
+            self.event(f"сброшено привязок к ядрам, оставшихся от прошлого запуска: {n} ({why})")
+        return n
+
+    def save_pins(self):
+        entries = self.parker.pin_entries() + self.focus.pin_entries()
+        if entries != getattr(self, "_last_pins", None):
+            self._last_pins = entries
+            try:
+                if entries:
+                    park.save_pins(PINS_PATH, entries)
+                elif os.path.exists(PINS_PATH):
+                    os.remove(PINS_PATH)
+            except OSError as e:
+                log.warning("не удалось записать %s: %s", PINS_PATH, e)
+
     def restore_factory(self):
         with self.lock:
             self.parker.release_all("служба остановлена")
+            self.focus.release_all("служба остановлена")
+            self.save_pins()
             f, h, t = self.factory, self.hw, {}
             if h.has_rapl and "pl1_uw" in f and "pl2_uw" in f:
                 t["rapl"] = (f["pl1_uw"], f["pl2_uw"])
-            for k in ("tcc_offset", "no_turbo"):
-                if k in f:
-                    t[k] = f[k]
+            if h.tcc and "tcc_offset" in f:
+                t["tcc_offset"] = f["tcc_offset"]
+            if h.turbo_kind and "turbo" in f:
+                t["turbo"] = f["turbo"]
             if h.cpus and h.max_freq_khz:
-                t["max_freq"] = {c: h.max_freq_khz for c in h.cpus}
+                t["max_freq"] = {c: h.max_khz[c] for c in h.cpus if h.max_khz.get(c)}
             if h.has_epp and self.epp_ppd:
                 t["epp"] = self.epp_ppd
             ch, _ = self.apply(t, "возврат заводских")
@@ -189,24 +221,38 @@ class Tuner:
     def update_thermal(self):
         """Обновляет оверлей. Возвращает True, если он изменился."""
         p = self.preset()
-        smart = p.get("smart", {})
+        # без датчиков по ядрам «умные» функции по ядрам не работают (у всех ядер одна температура)
+        smart = p.get("smart", {}) if self.hw.per_core_temps else {}
         boost = p.get("boost_temp_c", {})
         before = (tuple(self.hot_cores()), self.boost_off)
         if not smart.get("enabled") and not boost.get("enabled"):
             self.hot_until.clear()
+            self.grace_start.clear()
             self.boost_off = False
             return before != ((), False)
         cores, pkg = self.hw.temps()
         now = time.monotonic()
         if smart.get("enabled"):
             sv = smart["value"]
+            grace = sv.get("grace_s", 0) if p.get("park", {}).get("enabled") else 0
             for core, t in cores.items():
                 if t >= sv["trigger_c"]:
+                    if grace > 0 and self.hot_until.get(core, 0) <= now:
+                        start = self.grace_start.setdefault(core, now)
+                        if start == now:
+                            self.event(f"ядро {core}: {t:.0f} °C ≥ {sv['trigger_c']} — {grace:g} с парковка пытается остудить")
+                        if now - start < grace:
+                            continue
+                        self.grace_start.pop(core, None)
                     if self.hot_until.get(core, 0) <= now:
                         self.event(f"ядро {core}: {t:.0f} °C ≥ {sv['trigger_c']} — режу до {sv['core_mhz']} МГц на {sv['hold_s']:g} с")
                     self.hot_until[core] = now + sv["hold_s"]
+                elif core in self.grace_start and t <= sv["trigger_c"] - GRACE_HYST:
+                    self.grace_start.pop(core)
+                    self.event(f"ядро {core}: остыло до {t:.0f} °C без троттлинга")
         else:
             self.hot_until.clear()
+            self.grace_start.clear()
         if boost.get("enabled") and pkg is not None:
             lim = boost["value"]
             if not self.boost_off and pkg >= lim:
@@ -220,7 +266,29 @@ class Tuner:
         return (tuple(self.hot_cores()), self.boost_off) != before
 
     # ---------- основной цикл ----------
+    PROFILE_FILE = os.path.join(config.STATE_DIR, "profile")
+
+    def set_manual_profile(self, prof):
+        if prof not in config.PPD_PROFILES:
+            raise ValueError(f"неизвестный профиль {prof!r}")
+        os.makedirs(config.STATE_DIR, exist_ok=True)
+        with open(self.PROFILE_FILE, "w") as f:
+            f.write(prof)
+        self.event(f"профиль (вручную): {self.profile} → {prof}")
+        self.profile = prof
+
     def poll_ppd(self):
+        if self.manual:
+            if self.profile is None:
+                try:
+                    with open(self.PROFILE_FILE) as f:
+                        prof = f.read().strip()
+                except OSError:
+                    prof = "balanced"
+                self.profile = prof if prof in config.PPD_PROFILES else "balanced"
+                self.event(f"power-profiles-daemon не найден — профиль выбирается вручную: {self.profile}")
+                return True
+            return False
         mt = hw.ppd_mtime()
         if mt == self.ppd_mtime:
             return False
@@ -237,7 +305,6 @@ class Tuner:
         return True
 
     def verify(self):
-        p = self.preset()
         if self.hw.has_epp:
             cur = self.hw.read_epp()
             if cur != self.epp_written:
@@ -245,8 +312,9 @@ class Tuner:
         self.apply(self.targets(), "возврат откаченных значений")
 
     def run(self, stop):
+        self.unpin("старт службы")  # следы прошлых запусков (сбой, старая версия)
         self.update_power()
-        if not self.poll_ppd() and self.profile is None:
+        if not self.poll_ppd() and self.profile is None:  # ppd есть, но профиль не прочитался
             log.warning("не найден профиль ppd (%s), беру balanced", hw.PPD_STATE)
             self.profile = "balanced"
         with self.lock:
@@ -269,9 +337,15 @@ class Tuner:
                         why = why or "смена ступени"
                     if self.update_thermal():
                         why = why or "умный троттлинг"
-                    pk = self.preset().get("park", {})
-                    self.parker.tick(pk["value"] if pk.get("enabled") else None,
-                                     self.hw.temps()[0] if pk.get("enabled") else {}, self.hot_cores())
+                    pk = self.preset().get("park", {}) if self.hw.per_core_temps else {}
+                    fc = self.preset().get("focus", {})
+                    core_t = self.hw.temps()[0] if (pk.get("enabled") or fc.get("enabled")) else {}
+                    self.focus.tick(fc["value"] if fc.get("enabled") else None, core_t, self.hot_cores(),
+                                    avoid={p["to"] for p in self.parker.parked.values()})
+                    self.parker.tick(pk["value"] if pk.get("enabled") else None, core_t, self.hot_cores(),
+                                     skip_pids=self.focus.pids(), skip_cores=self.focus.cores,
+                                     evac=list(self.grace_start))
+                    self.save_pins()
                     hot = tuple(self.hot_cores())
                     if hot != last_hot:  # ядро остыло (время вышло) — снять ограничение
                         last_hot = hot
@@ -291,11 +365,13 @@ class Tuner:
             with self.lock:
                 s = self.sampler.sample()
                 s.update({
-                    "profile": self.profile, "bound_preset": self.bound_id(), "static_preset": self.static_id,
+                    "profile": self.profile, "manual_profile": self.manual, "bound_preset": self.bound_id(), "static_preset": self.static_id,
                     "reason": self.reason, "last_apply": self.last_apply, "last_changes": self.last_changes,
                     "errors": self.last_errors, "epp_ppd": self.epp_ppd,
                     "hot_cores": self.hot_cores(), "boost_off": self.boost_off,
                     "parked": self.parker.status(),
+                    "grace": {str(c): round(time.monotonic() - t, 1) for c, t in self.grace_start.items()},
+                    "focus": self.focus.status(),
                     "events": self.events[-8:],
                 })
             return {"ok": True, "status": s}
@@ -317,8 +393,23 @@ class Tuner:
                 self.update_thermal()
                 ch, err = self.apply(self.targets(), "новый конфиг")
             return {"ok": True, "config": self.cfg, "changes": ch, "errors": err}
+        if cmd == "set_profile":
+            if not self.manual:
+                return {"ok": False, "error": "профиль переключается через power-profiles-daemon (powerprofilesctl)"}
+            with self.lock:
+                self.set_manual_profile(req.get("profile"))
+                self.resolve()
+                self.update_thermal()
+                ch, err = self.apply(self.targets(), "смена профиля")
+            return {"ok": True, "changes": ch, "errors": err}
+        if cmd == "unpin":
+            with self.lock:
+                return {"ok": True, "count": self.unpin("вручную", deep=True)}
         if cmd == "apply":
             with self.lock:
+                self.cfg = config.load(self.hw.epp_choices)  # подхватить ручные правки config.toml
+                self.resolve()
+                self.update_thermal()
                 self.hw.memo.clear()
                 ch, err = self.apply(self.targets(), "вручную")
             return {"ok": True, "changes": ch, "errors": err}
@@ -347,6 +438,13 @@ def serve(tuner):
         pass
     srv = Server(SOCKET_PATH, Handler)
     group = tuner.cfg["general"]["socket_group"]
+    for g in (group, "wheel", "sudo", "admin"):  # wheel — Arch/Fedora, sudo — Debian/Ubuntu
+        try:
+            grp.getgrnam(g)
+            group = g
+            break
+        except KeyError:
+            continue
     try:
         gid = grp.getgrnam(group).gr_gid
         os.chown(SOCKET_PATH, 0 if os.geteuid() == 0 else -1, gid)

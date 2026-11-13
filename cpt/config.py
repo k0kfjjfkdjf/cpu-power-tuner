@@ -24,14 +24,20 @@ SMART_FIELDS = {  # поле: (тип, мин, макс, шаг, подпись)
     "hold_s": (float, 0.5, 30, 0.5, "держать ограничение, с"),
     "core_mhz": (int, 400, 6000, 100, "частота горячего ядра, МГц"),
     "pkg_w": (float, 0, 64, 0.5, "заодно лимит пакета, Вт (0 = нет)"),
+    "grace_s": (float, 0, 30, 0.5, "сначала дать парковке остудить, с (0 = сразу)"),
 }
 
 PARK_FIELDS = {
     "trigger_c": (int, 50, 105, 1, "парковать, когда t ядра ≥, °C"),
-    "hold_s": (float, 2, 120, 1, "держать задачу на холодном ядре, с"),
+    "hold_s": (float, 0, 600, 1, "держать на холодном ядре, с (0 = пока оно не нагреется)"),
     "min_load_pct": (int, 20, 100, 5, "только задачи, грузящие ядро ≥, %"),
 }
-DICT_FIELDS = {"smart": SMART_FIELDS, "park": PARK_FIELDS}
+FOCUS_FIELDS = {
+    "cores": (int, 1, 16, 1, "сколько самых холодных ядер отдать"),
+    "recheck_s": (float, 1, 60, 1, "пересматривать выбор ядер раз в, с"),
+    "swap_margin_c": (int, 1, 20, 1, "переезжать, если другие холоднее на, °C"),
+}
+DICT_FIELDS = {"smart": SMART_FIELDS, "park": PARK_FIELDS, "focus": FOCUS_FIELDS}
 
 # key: (тип, мин, макс, шаг, подпись, пояснение)
 PARAMS = {
@@ -56,6 +62,9 @@ PARAMS = {
              "Пока ядро только подбирается к перегреву, самая тяжёлая задача на нём переезжает на самое "
              "холодное свободное ядро (через привязку к ядрам), а потом отпускается обратно. "
              "Ставьте порог на несколько градусов ниже умного троттлинга."),
+    "focus": (dict, None, None, None, "Активное окно — на холодные ядра",
+              "Программа в фокусе (вместе с дочерними процессами) привязывается к самым холодным ядрам, "
+              "чтобы они могли бустить. Сменили окно — прошлое приложение отпускается. Hyprland и Sway/i3."),
 }
 
 
@@ -68,8 +77,9 @@ def _static(name, builtin, **over):
         "pl1_w": _p(False, 15.0), "pl2_w": _p(False, 40.0), "temp_limit_c": _p(False, 95),
         "turbo": _p(False, True), "max_freq_mhz": _p(False, 3600), "boost_temp_c": _p(False, 85),
         "epp": _p(False, "balance_performance"),
-        "smart": _p(False, {"trigger_c": 90, "hold_s": 2.0, "core_mhz": 1500, "pkg_w": 0.0}),
+        "smart": _p(False, {"trigger_c": 90, "hold_s": 2.0, "core_mhz": 1500, "pkg_w": 0.0, "grace_s": 0.0}),
         "park": _p(False, {"trigger_c": 85, "hold_s": 10.0, "min_load_pct": 60}),
+        "focus": _p(False, {"cores": 2, "recheck_s": 5.0, "swap_margin_c": 4}),
     }
     base.update(over)
     return {"name": name, "type": "static", "builtin": builtin, **base}
@@ -79,16 +89,16 @@ TEMPLATES = {
     "eco": _static("Экономия", "eco",
                    pl1_w=_p(True, 7.0), pl2_w=_p(True, 8.0), temp_limit_c=_p(True, 70),
                    epp=_p(True, "power"),
-                   smart=_p(True, {"trigger_c": 75, "hold_s": 3.0, "core_mhz": 800, "pkg_w": 0.0}),
+                   smart=_p(True, {"trigger_c": 75, "hold_s": 3.0, "core_mhz": 800, "pkg_w": 0.0, "grace_s": 2.0}),
                    park=_p(True, {"trigger_c": 70, "hold_s": 15.0, "min_load_pct": 50})),
     "quiet": _static("Тихий", "quiet",
                      pl1_w=_p(True, 8.0), pl2_w=_p(True, 10.0), boost_temp_c=_p(True, 70),
                      max_freq_mhz=_p(True, 2500), epp=_p(True, "balance_power"),
-                     smart=_p(True, {"trigger_c": 78, "hold_s": 2.0, "core_mhz": 1200, "pkg_w": 7.0}),
+                     smart=_p(True, {"trigger_c": 78, "hold_s": 2.0, "core_mhz": 1200, "pkg_w": 7.0, "grace_s": 3.0}),
                      park=_p(True, {"trigger_c": 73, "hold_s": 10.0, "min_load_pct": 50})),
     "balanced": _static("Баланс", "balanced",
                         pl1_w=_p(True, 12.0), pl2_w=_p(True, 20.0), temp_limit_c=_p(True, 85),
-                        smart=_p(True, {"trigger_c": 90, "hold_s": 2.0, "core_mhz": 1500, "pkg_w": 0.0}),
+                        smart=_p(True, {"trigger_c": 90, "hold_s": 2.0, "core_mhz": 1500, "pkg_w": 0.0, "grace_s": 3.0}),
                         park=_p(True, {"trigger_c": 85, "hold_s": 10.0, "min_load_pct": 60})),
     "performance": _static("Производительность", "performance"),
     "auto_battery": {

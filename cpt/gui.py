@@ -450,7 +450,7 @@ class PresetsPage(Gtk.Stack):
                 "turbo": {True: "вкл", False: "выкл"}.get(fac.get("turbo"), "—"),
                 "max_freq_mhz": f"{caps.get('max_freq_mhz')} МГц",
                 "boost_temp_c": "не ограничен", "epp": "как ставит ppd", "smart": "выключен",
-                "park": "выключена", "focus": "выключено",
+                "park": "выключена", "focus": "выключен",
             },
             "available": {"pl1_w": caps.get("rapl"), "pl2_w": caps.get("rapl"), "temp_limit_c": caps.get("tcc"),
                           "turbo": caps.get("turbo"), "max_freq_mhz": True, "boost_temp_c": caps.get("turbo"),
@@ -544,7 +544,11 @@ class PresetsPage(Gtk.Stack):
             pv = p["park"]["value"]
             bits.append(f"парковка с {pv['trigger_c']} °C" + (" навсегда" if not pv["hold_s"] else ""))
         if p.get("focus", {}).get("enabled"):
-            bits.append(f"активное окно → {p['focus']['value']['cores']} холодн. ядра")
+            fv = p["focus"]["value"]
+            extra = [f"nice {fv['nice']}" if fv.get("nice") else "",
+                     f"фон −{fv['bg_drop_mhz']} МГц" if fv.get("bg_drop_mhz") else "",
+                     f"ротация {fv['rotate_s']:g} с" if fv.get("rotate_s") else ""]
+            bits.append(f"фокус → {fv['cores']} холодн. ядра" + "".join(f", {e}" for e in extra if e))
         return " · ".join(bits) or "всё заводское"
 
     def _card(self, pid, p):
@@ -991,8 +995,9 @@ class Window(Gtk.ApplicationWindow):
             parts.append(f"<span foreground='#ff6b6b'><b>остывают ядра: {', '.join(map(str, s['hot_cores']))}</b></span>")
         fo = s.get("focus") or {}
         if fo.get("cores"):
-            parts.append(f"<span foreground='#57e389'>в фокусе: {GLib.markup_escape_text(fo['name'])} → ядра "
-                         f"{','.join(map(str, fo['cores']))}</span>")
+            parts.append(f"<span foreground='#57e389'>в фокусе: {GLib.markup_escape_text(fo['name'])} → рабочие ядра "
+                         f"{','.join(map(str, fo['cores']))}" + (" · приоритет повышен" if fo.get("boosted") else "")
+                         + "</span>")
         elif fo.get("note"):
             parts.append(f"<span alpha='65%'>активное окно: {GLib.markup_escape_text(fo['note'])}</span>")
         if s.get("parked"):

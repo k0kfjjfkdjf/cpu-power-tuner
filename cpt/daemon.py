@@ -135,6 +135,13 @@ class Tuner:
             # у гибридных процессоров у P- и E-ядер свой максимум: потолок не выше собственного максимума потока
             per = {c: (min(int(val("max_freq_mhz")) * 1000, h.max_khz[c]) if on("max_freq_mhz") else h.max_khz[c])
                    for c in h.cpus if h.max_khz.get(c)}
+            fo = p.get("focus", {})
+            fg = self.focus.fg_cpus() if fo.get("enabled") else set()
+            drop = int(fo.get("value", {}).get("bg_drop_mhz", 0) or 0) * 1000 if fg else 0
+            if drop:  # режим фокуса: отдыхающим ядрам потолок ниже
+                for c in per:
+                    if c not in fg:
+                        per[c] = max(per[c] - drop, h.min_khz.get(c, 0))
             if on("smart"):
                 for core in self.hot_cores():
                     for c in h.threads_of_core(core):
@@ -142,7 +149,13 @@ class Tuner:
                             per[c] = min(per[c], max(int(val("smart")["core_mhz"]) * 1000, h.min_khz.get(c, 0)))
             t["max_freq"] = per
         if h.has_epp:
-            t["epp"] = val("epp") if on("epp") else self.epp_ppd
+            base = val("epp") if on("epp") else self.epp_ppd
+            fo = p.get("focus", {})
+            fg = self.focus.fg_cpus() if fo.get("enabled") else set()
+            if fg and fo.get("value", {}).get("bg_epp_power") and "power" in h.epp_choices:
+                t["epp"] = {c: (base if c in fg else "power") for c in h.cpus}  # отдыхающие ядра ленивее
+            else:
+                t["epp"] = base
         return t
 
     def hot_cores(self):
@@ -160,7 +173,7 @@ class Tuner:
             try:
                 changes += fn(v)
                 if key == "epp":
-                    self.epp_written = v
+                    self.epp_written = v.get(h.cpus[0]) if isinstance(v, dict) else v
             except OSError as e:
                 errors.append(f"{key}: {e.strerror or e}")
         if changes:
@@ -340,8 +353,9 @@ class Tuner:
                     pk = self.preset().get("park", {}) if self.hw.per_core_temps else {}
                     fc = self.preset().get("focus", {})
                     core_t = self.hw.temps()[0] if (pk.get("enabled") or fc.get("enabled")) else {}
-                    self.focus.tick(fc["value"] if fc.get("enabled") else None, core_t, self.hot_cores(),
-                                    avoid={p["to"] for p in self.parker.parked.values()})
+                    if self.focus.tick(fc["value"] if fc.get("enabled") else None, core_t, self.hot_cores(),
+                                       avoid={p["to"] for p in self.parker.parked.values()}):
+                        self.apply(self.targets(), "режим фокуса")
                     self.parker.tick(pk["value"] if pk.get("enabled") else None, core_t, self.hot_cores(),
                                      skip_pids=self.focus.pids(), skip_cores=self.focus.cores,
                                      evac=list(self.grace_start))

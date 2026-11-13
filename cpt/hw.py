@@ -333,11 +333,14 @@ class Hardware:
         return [f"max_freq CPU{','.join(map(str, changed))}={'/'.join(map(str, vals))}МГц"]
 
     def set_epp(self, value):
-        changed = False
-        for c in self.cpus:
-            if self.ensure(f"{CPU_DIR}/cpu{c}/cpufreq/energy_performance_preference", value):
-                changed = True
-        return [f"EPP={value}"] if changed else []
+        """value — строка для всех потоков или {поток: строка} (режим фокуса)."""
+        per = value if isinstance(value, dict) else {c: value for c in self.cpus}
+        changed = [c for c, v in per.items()
+                   if v and self.ensure(f"{CPU_DIR}/cpu{c}/cpufreq/energy_performance_preference", v)]
+        if not changed:
+            return []
+        vals = sorted({per[c] for c in changed})
+        return [f"EPP={'/'.join(vals)}" + ("" if len(changed) == len(self.cpus) else f" CPU{','.join(map(str, changed))}")]
 
     def threads_of_core(self, core):
         return [c for c, k in self.core_of.items() if k == core]

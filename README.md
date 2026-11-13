@@ -13,7 +13,8 @@ or a profile you pick by hand when that daemon is absent.
 
 Beyond plain limits it can react to heat per core: **smart throttling** of a single hot core,
 **task parking** (moving the heaviest task off a warming core to a cooler one) and pinning the
-**focused window** to the coolest cores so they can boost.
+**focused window** to the coolest cores so they can boost, while the remaining cores rest at a lower
+ceiling ("focus mode"); the two groups swap roles as they heat up.
 
 ![Main window](docs/monitor.png)
 
@@ -31,7 +32,7 @@ Beyond plain limits it can react to heat per core: **smart throttling** of a sin
 - [Static preset parameters](#static-preset-parameters)
 - [Smart throttling and the grace period](#smart-throttling-and-the-grace-period)
 - [Task parking](#task-parking)
-- [Focused window on cool cores](#focused-window-on-cool-cores)
+- [Focus mode: focused window on cool cores](#focus-mode-focused-window-on-cool-cores)
 - [Dynamic presets (battery steps)](#dynamic-presets-battery-steps)
 - [Profiles and power-profiles-daemon](#profiles-and-power-profiles-daemon)
 - [Configuration file](#configuration-file)
@@ -160,7 +161,7 @@ Remove: `sudo ./uninstall.sh` (keeps config) or `sudo ./uninstall.sh --purge`.
 | **EPP** | How eagerly cores raise frequency. `power` = maximum saving. | `energy_performance_preference` | whatever `power-profiles-daemon` sets |
 | **Smart throttling** | See below. | `scaling_max_freq` of the hot core's threads | off |
 | **Task parking** | See below. | `sched_setaffinity` | off |
-| **Focused window** | See below. | `sched_setaffinity` | off |
+| **Focus mode** | See below. | `sched_setaffinity`, `setpriority`, per-core `scaling_max_freq` and EPP | off |
 
 Tip from real measurements: power limits are far more efficient than the TCC threshold. A TCC
 threshold of 50 °C produced 231 MHz at 7 W (clock skipping), while a 7 W power limit gave 845 MHz.
@@ -210,18 +211,39 @@ children, they are restored together with it.
 All pins are journaled to `/var/lib/cpu-power-tuner/pins.json`; after a crash or restart the
 service restores exactly what it pinned (checking each thread's start time and the boot id).
 
-## Focused window on cool cores
+## Focus mode: focused window on cool cores
 
-Fields: **number of coolest cores**, **re-check every s**, **move if others are cooler by °C**.
+The cores are split into a **working group** (N coolest cores) and a **resting group** (the rest).
 
-Once a second the service asks the compositor which window is focused (Hyprland
-`j/activewindow`; Sway/i3 `GET_TREE`), takes its process and all descendants (browsers and
-Electron apps do their work in child processes) and pins them to the N coolest cores that are not
-throttled and, preferably, not hosting parked heavy tasks. The choice is reviewed every few seconds.
-When focus moves to another window the previous application is released, including children it
-started meanwhile.
+| Field | Meaning |
+|---|---|
+| number of coolest cores | size of the working group (N) |
+| re-check every, s | how often the choice is reviewed |
+| move if others are cooler by, °C | heat-based rotation threshold |
+| rotation by timer, s | swap the groups every T seconds regardless of heat (0 = heat only) |
+| window priority (nice) | priority boost for the focused app, e.g. −5 (0 = untouched) |
+| compositor priority (nice) | priority boost for Hyprland/Sway/… (0 = untouched) |
+| resting cores: ceiling minus, MHz | the resting group runs this much below the preset's ceiling (0 = no) |
+| EPP power for resting cores | resting cores raise frequency reluctantly (1 = yes) |
 
-Note: N cores is a ceiling for the focused app. For heavy multi-threaded work give it more cores.
+How it works:
+1. Once a second the service asks the compositor which window is focused (Hyprland
+   `j/activewindow`; Sway/i3 `GET_TREE`) and takes its process with all descendants (browsers and
+   Electron apps do their work in child processes).
+2. That tree is pinned to the working group and gets a higher priority (`nice`), so when cores are
+   scarce the scheduler serves your window first.
+3. The resting group gets a lower frequency ceiling and EPP `power`: background tasks living there
+   run slower and cooler. Frequency in Linux is per core, not per process, so this is a soft split —
+   a background task may still land on a working core, but there it yields to the focused window.
+4. **Rotation** — when the working group becomes hotter than the resting one by the margin, when a
+   working core is throttled, or every T seconds, the groups swap roles: the window moves, and the
+   lower ceiling and EPP move to the new resting group.
+5. The compositor is **never pinned** (every app it launches would inherit the pin) — it only gets
+   the optional priority boost.
+6. When focus moves to another window, the previous application gets its original affinity and
+   priority back, including children it started meanwhile.
+
+The working-group size is a ceiling for the focused app; give heavy multi-threaded work more cores.
 
 ## Dynamic presets (battery steps)
 
@@ -270,7 +292,7 @@ boost_temp_c = { enabled = false, value = 85 }
 epp = { enabled = true, value = "power" }
 smart = { enabled = true, value = { trigger_c = 75, hold_s = 3.0, core_mhz = 800, pkg_w = 0.0, grace_s = 2.0 } }
 park = { enabled = true, value = { trigger_c = 70, hold_s = 0.0, min_load_pct = 50 } }
-focus = { enabled = false, value = { cores = 2, recheck_s = 5.0, swap_margin_c = 4 } }
+focus = { enabled = false, value = { cores = 2, recheck_s = 5.0, swap_margin_c = 4, rotate_s = 0.0, nice = -5, comp_nice = 0, bg_drop_mhz = 200, bg_epp_power = 1 } }
 
 [presets.auto_battery]
 name = "Auto by battery"

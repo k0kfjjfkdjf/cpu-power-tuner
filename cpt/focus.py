@@ -147,6 +147,68 @@ def _comm(pid):
         return str(pid)
 
 
+COMPOSITORS = {"Hyprland", "sway", "i3", "niri", "river", "labwc", "wayfire", "kwin_wayland", "gnome-shell", "Xwayland"}
+
+
+def _nice(tid):
+    return os.getpriority(os.PRIO_PROCESS, tid)
+
+
+def _set_nice(tid, v):
+    os.setpriority(os.PRIO_PROCESS, tid, v)
+
+
+def _find_compositors():
+    out = []
+    for e in os.scandir("/proc"):
+        if e.name.isdigit() and _comm(int(e.name)) in COMPOSITORS:
+            out.append(int(e.name))
+    return out
+
+
+class Boost:
+    """Повышенный приоритет (nice) для набора процессов с возвратом исходного.
+    nice в Linux — свойство потока; новые потоки наследуют его от создателя."""
+
+    def __init__(self):
+        self.procs = {}   # pid -> (исходный nice главного потока, наш nice)
+
+    def apply(self, pid, target):
+        if target >= 0:
+            return
+        try:
+            if pid not in self.procs:
+                orig = _nice(pid)
+                if orig <= target:          # процесс и так приоритетнее — не трогаем
+                    return
+                self.procs[pid] = (orig, target)
+            orig, target = self.procs[pid]
+            for tid in _tids(pid):
+                try:
+                    if _nice(tid) > target:
+                        _set_nice(tid, target)
+                except OSError:
+                    pass
+        except OSError:
+            self.procs.pop(pid, None)
+
+    def release(self, pid):
+        st = self.procs.pop(pid, None)
+        if not st:
+            return
+        orig, target = st
+        for tid in _tids(pid):
+            try:
+                if _nice(tid) == target:     # если кто-то поменял сам — не лезем
+                    _set_nice(tid, orig)
+            except OSError:
+                pass
+
+    def release_all(self):
+        for pid in list(self.procs):
+            self.release(pid)
+
+
 class Focus:
     def __init__(self, hw, event):
         self.hw = hw
@@ -161,6 +223,10 @@ class Focus:
         self.since = 0.0          # когда начали привязывать текущее окно (для уборки унаследованных привязок)
         self.cur_set = set()
         self.note = ""
+        self.cfg = None
+        self.boost = Boost()      # приоритет активного окна
+        self.comp_boost = Boost() # приоритет композитора
+        self.last_comp = 0.0
 
     def pids(self):
         return set(self.pinned)
@@ -181,8 +247,13 @@ class Focus:
                 pass
         return out
 
+    def fg_cpus(self):
+        """Потоки рабочей группы ядер (пусто, если режим неактивен)."""
+        return {t for c in self.cores for t in self.hw.threads_of_core(c)} if self.pinned else set()
+
     def status(self):
-        return {"pid": self.pid, "name": self.name, "cores": self.cores, "procs": len(self.pinned), "note": self.note}
+        return {"pid": self.pid, "name": self.name, "cores": self.cores, "procs": len(self.pinned), "note": self.note,
+                "boosted": len(self.boost.procs), "comp_boosted": len(self.comp_boost.procs)}
 
     # ---------- привязка ----------
     def _pin(self, pid, cpus):
@@ -211,6 +282,7 @@ class Focus:
             self.pinned.pop(pid, None)
 
     def _release(self, pid):
+        self.boost.release(pid)
         st = self.pinned.pop(pid, None)
         if not st:
             return
@@ -221,10 +293,13 @@ class Focus:
             except OSError:
                 pass
 
-    def release_all(self, why=""):
+    def release_all(self, why="", keep_comp=False):
         had = bool(self.pinned)
         for pid in list(self.pinned):
             self._release(pid)
+        self.boost.release_all()
+        if not keep_comp:
+            self.comp_boost.release_all()
         if had and self.cur_set:
             # процессы, запущенные из активного окна после последнего обхода дерева
             restore_inherited(self.since, self.cur_set, set(self.hw.cpus))
@@ -237,60 +312,94 @@ class Focus:
     def _choose(self, cfg, core_t, hot_cores, now, avoid=()):
         n = max(1, min(int(cfg["cores"]), len(core_t) - 1 if len(core_t) > 1 else 1))
         # сначала не под троттлингом, потом без припаркованных тяжёлых задач, потом самые холодные
-        ranked = sorted(core_t, key=lambda c: (c in hot_cores, c in avoid, core_t[c]))
-        want = sorted(ranked[:n])
+        key = lambda c: (c in hot_cores, c in avoid, core_t[c])  # noqa: E731
+        want = sorted(sorted(core_t, key=key)[:n])
         if not self.cores:
-            return want
+            return want, ""
+        rot = cfg.get("rotate_s", 0) or 0
+        if rot and now - self.last_choose >= rot:
+            # ротация по таймеру: рабочая группа уходит отдыхать, работать идут отдохнувшие ядра
+            rest = sorted((c for c in core_t if c not in self.cores), key=key)
+            new = rest[:n]
+            if len(new) < n:
+                new += sorted((c for c in self.cores), key=key)[:n - len(new)]
+            return sorted(new), "ротация по таймеру"
         if now - self.last_choose < cfg["recheck_s"]:
-            return self.cores
+            return self.cores, ""
         cur_max = max(core_t.get(c, 0) for c in self.cores)
         new_max = max(core_t[c] for c in want)
-        if any(c in hot_cores for c in self.cores) or cur_max - new_max >= cfg["swap_margin_c"] \
-                or (any(c in avoid for c in self.cores) and not any(c in avoid for c in want)):
-            return want
-        return self.cores
+        if any(c in hot_cores for c in self.cores):
+            return want, "ядро под троттлингом"
+        if cur_max - new_max >= cfg["swap_margin_c"]:
+            return want, "ротация по нагреву"
+        if any(c in avoid for c in self.cores) and not any(c in avoid for c in want):
+            return want, "на ядре припаркована тяжёлая задача"
+        return self.cores, ""
+
+    def _compositor(self, cfg, now):
+        target = int(cfg.get("comp_nice", 0) or 0)
+        if target >= 0:
+            self.comp_boost.release_all()
+            return
+        if now - self.last_comp < 5:
+            return
+        self.last_comp = now
+        alive = set(_find_compositors())
+        for pid in list(self.comp_boost.procs):
+            if pid not in alive:
+                self.comp_boost.procs.pop(pid, None)
+        for pid in alive:
+            self.comp_boost.apply(pid, target)
 
     def tick(self, cfg, core_t, hot_cores, avoid=()):
+        """Возвращает True, если сменилась рабочая группа ядер (службе нужно пересчитать ограничения)."""
         now = time.monotonic()
+        before = list(self.cores) if self.pinned else []
+        self.cfg = cfg
         if not cfg or not core_t:
-            if self.pinned:
+            if self.pinned or self.comp_boost.procs:
                 self.release_all("функция выключена")
             self.note = ""
-            return
+            return bool(before)
+        self._compositor(cfg, now)
         if now - self.last_poll < 1.0:
-            return
+            return False
         self.last_poll = now
         pid, info = active_pid()
         if pid is None or pid == os.getpid():
             if self.pinned:
-                self.release_all(info)
+                self.release_all(info, keep_comp=True)
             self.note = info if pid is None else ""
-            return
+            return bool(before)
         self.note = ""
         if pid != self.pid:
-            self.release_all("фокус на другом окне")
+            self.release_all("фокус на другом окне", keep_comp=True)
             self.pid, self.name = pid, f"{info} ({_comm(pid)})"
-        cores = self._choose(cfg, core_t, hot_cores, now, avoid)
+        cores, why = self._choose(cfg, core_t, hot_cores, now, avoid)
         changed = cores != self.cores or not self.pinned
         if cores != self.cores:
             self.cores = cores
             self.last_choose = now
             temps = "/".join(f"{core_t[c]:.0f}" for c in cores)
-            self.event(f"активное окно: {self.name} → ядра {','.join(map(str, cores))} ({temps} °C)")
-        # новые потоки и дочерние процессы наследуют привязку сами, поэтому дерево
+            self.event(f"активное окно: {self.name} → ядра {','.join(map(str, cores))} ({temps} °C)"
+                       + (f" — {why}" if why else ""))
+        # новые потоки и дочерние процессы наследуют привязку и приоритет сами, поэтому дерево
         # обходим только при смене окна/ядер и раз в 5 с (вдруг кто-то сбросил привязку)
         if not changed and now - self.last_tree < 5:
-            return
+            return False
         self.last_tree = now
         cpus = {t for c in self.cores for t in self.hw.threads_of_core(c)}
         if cpus != self.cur_set:
             if self.cur_set:
                 restore_inherited(self.since, self.cur_set, set(self.hw.cpus))
             self.cur_set, self.since = cpus, _uptime_ticks()
-        # cur_set — это множество потоков ядер; у процессов привязка = orig & cur_set, для полной orig это cur_set
         tree = set(process_tree(pid))
+        nice = int(cfg.get("nice", 0) or 0)
         for p in tree:
             self._pin(p, cpus)
+            if p in self.pinned:
+                self.boost.apply(p, nice)
         for p in list(self.pinned):
             if p not in tree:
                 self._release(p)
+        return (list(self.cores) if self.pinned else []) != before

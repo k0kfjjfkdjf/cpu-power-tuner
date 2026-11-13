@@ -2,6 +2,10 @@
 
 **English** · [Русский](README.ru.md)
 
+**A "potato mode" for your laptop: longer on battery, quieter, and no lag when one core is
+working hard.** It nudges the Linux scheduler to place heavy tasks with core temperatures in mind —
+something the scheduler itself does not do on most x86 laptops.
+
 A CoreCtrl-style power manager for Linux laptops and desktops. It shows every core and thread
 at a glance (load, frequency, temperature, package power) and applies **presets of CPU limits**
 that follow your power profile: power-saver / balanced / performance from `power-profiles-daemon`,

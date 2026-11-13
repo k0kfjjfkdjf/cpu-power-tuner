@@ -1,0 +1,349 @@
+
+===== Система =====
+Пт 13 ноя 2026 09:32:01 +05
+Linux archlinux 7.2.14-zen1-1-zen #1 ZEN SMP PREEMPT_DYNAMIC Fri, 30 Oct 2026 14:32:44 +0000 x86_64 GNU/Linux
+./probe/probe.sh: строка 34: hostname: command not found
+model name	: Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz
+cpu family	: 6
+model		: 126
+stepping	: 5
+hwp hwp_epp ida intel_pt 
+8
+root=PARTUUID=f1e12e44-fdc1-4ece-927a-27ac51281203 zswap.enabled=0 rw rootfstype=ext4 quiet splash loglevel=3 rd.udev.log_level=3 vt.global_cursor_default=0
+HP
+HP Laptop 15s-fq1xxx
+F.30
+07/04/2023
+
+===== intel_pstate (глобально) =====
+/sys/devices/system/cpu/intel_pstate/hwp_dynamic_boost = 0  [w]
+/sys/devices/system/cpu/intel_pstate/max_perf_pct = 100  [w]
+/sys/devices/system/cpu/intel_pstate/min_perf_pct = 11  [w]
+/sys/devices/system/cpu/intel_pstate/no_turbo = 0  [w]
+/sys/devices/system/cpu/intel_pstate/num_pstates = 33  [w]
+/sys/devices/system/cpu/intel_pstate/status = active  [w]
+/sys/devices/system/cpu/intel_pstate/turbo_pct = 79  [w]
+
+===== cpufreq по потокам =====
+--- cpu0
+/sys/devices/system/cpu/cpu0/cpufreq/scaling_driver = intel_pstate  [w]
+/sys/devices/system/cpu/cpu0/cpufreq/scaling_governor = powersave  [w]
+/sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors = performance powersave  [w]
+/sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference = performance  [w]
+/sys/devices/system/cpu/cpu0/cpufreq/energy_performance_available_preferences = default performance balance_performance balance_power power   [w]
+/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu0/cpufreq/base_frequency = 1000000  [w]
+/sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq = 1194817  [w]
+/sys/devices/system/cpu/cpu0/power/energy_perf_bias = 0  [w]
+--- cpu1
+/sys/devices/system/cpu/cpu1/cpufreq/scaling_driver = intel_pstate  [w]
+/sys/devices/system/cpu/cpu1/cpufreq/scaling_governor = powersave  [w]
+/sys/devices/system/cpu/cpu1/cpufreq/scaling_available_governors = performance powersave  [w]
+/sys/devices/system/cpu/cpu1/cpufreq/energy_performance_preference = performance  [w]
+/sys/devices/system/cpu/cpu1/cpufreq/energy_performance_available_preferences = default performance balance_performance balance_power power   [w]
+/sys/devices/system/cpu/cpu1/cpufreq/cpuinfo_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu1/cpufreq/cpuinfo_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu1/cpufreq/base_frequency = 1000000  [w]
+/sys/devices/system/cpu/cpu1/cpufreq/scaling_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu1/cpufreq/scaling_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu1/cpufreq/scaling_cur_freq = 1639974  [w]
+/sys/devices/system/cpu/cpu1/power/energy_perf_bias = 0  [w]
+--- cpu2
+/sys/devices/system/cpu/cpu2/cpufreq/scaling_driver = intel_pstate  [w]
+/sys/devices/system/cpu/cpu2/cpufreq/scaling_governor = powersave  [w]
+/sys/devices/system/cpu/cpu2/cpufreq/scaling_available_governors = performance powersave  [w]
+/sys/devices/system/cpu/cpu2/cpufreq/energy_performance_preference = performance  [w]
+/sys/devices/system/cpu/cpu2/cpufreq/energy_performance_available_preferences = default performance balance_performance balance_power power   [w]
+/sys/devices/system/cpu/cpu2/cpufreq/cpuinfo_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu2/cpufreq/cpuinfo_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu2/cpufreq/base_frequency = 1000000  [w]
+/sys/devices/system/cpu/cpu2/cpufreq/scaling_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu2/cpufreq/scaling_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu2/cpufreq/scaling_cur_freq = 1562098  [w]
+/sys/devices/system/cpu/cpu2/power/energy_perf_bias = 0  [w]
+--- cpu3
+/sys/devices/system/cpu/cpu3/cpufreq/scaling_driver = intel_pstate  [w]
+/sys/devices/system/cpu/cpu3/cpufreq/scaling_governor = powersave  [w]
+/sys/devices/system/cpu/cpu3/cpufreq/scaling_available_governors = performance powersave  [w]
+/sys/devices/system/cpu/cpu3/cpufreq/energy_performance_preference = performance  [w]
+/sys/devices/system/cpu/cpu3/cpufreq/energy_performance_available_preferences = default performance balance_performance balance_power power   [w]
+/sys/devices/system/cpu/cpu3/cpufreq/cpuinfo_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu3/cpufreq/cpuinfo_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu3/cpufreq/base_frequency = 1000000  [w]
+/sys/devices/system/cpu/cpu3/cpufreq/scaling_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu3/cpufreq/scaling_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu3/cpufreq/scaling_cur_freq = 1869931  [w]
+/sys/devices/system/cpu/cpu3/power/energy_perf_bias = 0  [w]
+--- cpu4
+/sys/devices/system/cpu/cpu4/cpufreq/scaling_driver = intel_pstate  [w]
+/sys/devices/system/cpu/cpu4/cpufreq/scaling_governor = powersave  [w]
+/sys/devices/system/cpu/cpu4/cpufreq/scaling_available_governors = performance powersave  [w]
+/sys/devices/system/cpu/cpu4/cpufreq/energy_performance_preference = performance  [w]
+/sys/devices/system/cpu/cpu4/cpufreq/energy_performance_available_preferences = default performance balance_performance balance_power power   [w]
+/sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu4/cpufreq/cpuinfo_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu4/cpufreq/base_frequency = 1000000  [w]
+/sys/devices/system/cpu/cpu4/cpufreq/scaling_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu4/cpufreq/scaling_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu4/cpufreq/scaling_cur_freq = 1600000  [w]
+/sys/devices/system/cpu/cpu4/power/energy_perf_bias = 0  [w]
+--- cpu5
+/sys/devices/system/cpu/cpu5/cpufreq/scaling_driver = intel_pstate  [w]
+/sys/devices/system/cpu/cpu5/cpufreq/scaling_governor = powersave  [w]
+/sys/devices/system/cpu/cpu5/cpufreq/scaling_available_governors = performance powersave  [w]
+/sys/devices/system/cpu/cpu5/cpufreq/energy_performance_preference = performance  [w]
+/sys/devices/system/cpu/cpu5/cpufreq/energy_performance_available_preferences = default performance balance_performance balance_power power   [w]
+/sys/devices/system/cpu/cpu5/cpufreq/cpuinfo_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu5/cpufreq/cpuinfo_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu5/cpufreq/base_frequency = 1000000  [w]
+/sys/devices/system/cpu/cpu5/cpufreq/scaling_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu5/cpufreq/scaling_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu5/cpufreq/scaling_cur_freq = 1719072  [w]
+/sys/devices/system/cpu/cpu5/power/energy_perf_bias = 0  [w]
+--- cpu6
+/sys/devices/system/cpu/cpu6/cpufreq/scaling_driver = intel_pstate  [w]
+/sys/devices/system/cpu/cpu6/cpufreq/scaling_governor = powersave  [w]
+/sys/devices/system/cpu/cpu6/cpufreq/scaling_available_governors = performance powersave  [w]
+/sys/devices/system/cpu/cpu6/cpufreq/energy_performance_preference = performance  [w]
+/sys/devices/system/cpu/cpu6/cpufreq/energy_performance_available_preferences = default performance balance_performance balance_power power   [w]
+/sys/devices/system/cpu/cpu6/cpufreq/cpuinfo_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu6/cpufreq/cpuinfo_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu6/cpufreq/base_frequency = 1000000  [w]
+/sys/devices/system/cpu/cpu6/cpufreq/scaling_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu6/cpufreq/scaling_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu6/cpufreq/scaling_cur_freq = 2044488  [w]
+/sys/devices/system/cpu/cpu6/power/energy_perf_bias = 0  [w]
+--- cpu7
+/sys/devices/system/cpu/cpu7/cpufreq/scaling_driver = intel_pstate  [w]
+/sys/devices/system/cpu/cpu7/cpufreq/scaling_governor = powersave  [w]
+/sys/devices/system/cpu/cpu7/cpufreq/scaling_available_governors = performance powersave  [w]
+/sys/devices/system/cpu/cpu7/cpufreq/energy_performance_preference = performance  [w]
+/sys/devices/system/cpu/cpu7/cpufreq/energy_performance_available_preferences = default performance balance_performance balance_power power   [w]
+/sys/devices/system/cpu/cpu7/cpufreq/cpuinfo_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu7/cpufreq/cpuinfo_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu7/cpufreq/base_frequency = 1000000  [w]
+/sys/devices/system/cpu/cpu7/cpufreq/scaling_min_freq = 400000  [w]
+/sys/devices/system/cpu/cpu7/cpufreq/scaling_max_freq = 3600000  [w]
+/sys/devices/system/cpu/cpu7/cpufreq/scaling_cur_freq = 1242407  [w]
+/sys/devices/system/cpu/cpu7/power/energy_perf_bias = 0  [w]
+
+===== Powercap / RAPL =====
+--- /sys/class/powercap/intel-rapl
+/sys/class/powercap/intel-rapl/enabled = 1  [w]
+--- /sys/class/powercap/intel-rapl:0
+/sys/class/powercap/intel-rapl:0/name = package-0  [w]
+/sys/class/powercap/intel-rapl:0/enabled = 1  [w]
+/sys/class/powercap/intel-rapl:0/max_energy_range_uj = 262143328850  [w]
+/sys/class/powercap/intel-rapl:0/constraint_0_name = long_term  [w]
+/sys/class/powercap/intel-rapl:0/constraint_1_name = short_term  [w]
+/sys/class/powercap/intel-rapl:0/constraint_2_name = peak_power  [w]
+/sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw = 19000000  [w]
+/sys/class/powercap/intel-rapl:0/constraint_1_power_limit_uw = 40000000  [w]
+/sys/class/powercap/intel-rapl:0/constraint_2_power_limit_uw = 129000000  [w]
+/sys/class/powercap/intel-rapl:0/constraint_0_time_window_us = 27983872  [w]
+/sys/class/powercap/intel-rapl:0/constraint_1_time_window_us = 2440  [w]
+/sys/class/powercap/intel-rapl:0/constraint_2_time_window_us = cat: '/sys/class/powercap/intel-rapl:0/constraint_2_time_window_us': Нет доступных данных  [w]
+/sys/class/powercap/intel-rapl:0/constraint_0_max_power_uw = 15000000  [w]
+/sys/class/powercap/intel-rapl:0/constraint_1_max_power_uw = 0  [w]
+/sys/class/powercap/intel-rapl:0/constraint_2_max_power_uw = 0  [w]
+--- /sys/class/powercap/intel-rapl:0:0
+/sys/class/powercap/intel-rapl:0:0/name = core  [w]
+/sys/class/powercap/intel-rapl:0:0/enabled = 0  [w]
+/sys/class/powercap/intel-rapl:0:0/max_energy_range_uj = 262143328850  [w]
+/sys/class/powercap/intel-rapl:0:0/constraint_0_name = long_term  [w]
+/sys/class/powercap/intel-rapl:0:0/constraint_0_power_limit_uw = 0  [w]
+/sys/class/powercap/intel-rapl:0:0/constraint_0_time_window_us = 976  [w]
+/sys/class/powercap/intel-rapl:0:0/constraint_0_max_power_uw = cat: '/sys/class/powercap/intel-rapl:0:0/constraint_0_max_power_uw': Нет доступных данных  [w]
+--- /sys/class/powercap/intel-rapl:0:1
+/sys/class/powercap/intel-rapl:0:1/name = uncore  [w]
+/sys/class/powercap/intel-rapl:0:1/enabled = 0  [w]
+/sys/class/powercap/intel-rapl:0:1/max_energy_range_uj = 262143328850  [w]
+/sys/class/powercap/intel-rapl:0:1/constraint_0_name = long_term  [w]
+/sys/class/powercap/intel-rapl:0:1/constraint_0_power_limit_uw = 0  [w]
+/sys/class/powercap/intel-rapl:0:1/constraint_0_time_window_us = 976  [w]
+/sys/class/powercap/intel-rapl:0:1/constraint_0_max_power_uw = cat: '/sys/class/powercap/intel-rapl:0:1/constraint_0_max_power_uw': Нет доступных данных  [w]
+--- /sys/class/powercap/intel-rapl-mmio
+/sys/class/powercap/intel-rapl-mmio/enabled = 1  [w]
+--- /sys/class/powercap/intel-rapl-mmio:0
+/sys/class/powercap/intel-rapl-mmio:0/name = package-0  [w]
+/sys/class/powercap/intel-rapl-mmio:0/enabled = 1  [w]
+/sys/class/powercap/intel-rapl-mmio:0/max_energy_range_uj = 262143328850  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_0_name = long_term  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_1_name = short_term  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_2_name = peak_power  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_0_power_limit_uw = 15000000  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_1_power_limit_uw = 40000000  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_2_power_limit_uw = 129000000  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_0_time_window_us = 27983872  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_1_time_window_us = 2440  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_2_time_window_us = cat: '/sys/class/powercap/intel-rapl-mmio:0/constraint_2_time_window_us': Нет доступных данных  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_0_max_power_uw = 15000000  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_1_max_power_uw = 0  [w]
+/sys/class/powercap/intel-rapl-mmio:0/constraint_2_max_power_uw = 0  [w]
+
+===== Потребление по зонам RAPL (замер 5 с) =====
+/sys/class/powercap/intel-rapl-mmio:0 (package-0): 5.86 W
+/sys/class/powercap/intel-rapl:0 (package-0): 5.87 W
+/sys/class/powercap/intel-rapl:0:1 (uncore): 0.28 W
+/sys/class/powercap/intel-rapl:0:0 (core): 2.88 W
+
+===== MSR (регистры процессора) =====
+PLATFORM_INFO 0xCE = 0x4043cf1810c00
+  базовый множитель (bits 15:8) = 12  -> ~1200 МГц
+  программируемый TCC offset (bit 30) = 1
+  программируемые лимиты турбо (bit 28) = 1
+TEMPERATURE_TARGET 0x1A2 = 0x5640000
+  Tjmax (bits 23:16) = 100 °C
+  текущий TCC offset (bits 29:24) = 5 °C
+  блокировка (bit 31) = 0
+RAPL_POWER_UNIT 0x606 = 0xa0e03  (единица мощности 0.125 Вт)
+PKG_POWER_LIMIT 0x610 = 0x42814000dd8098
+  PL1 = 19.00 Вт, вкл=1, clamp=1
+  PL2 = 40.00 Вт, вкл=1, clamp=0
+  БЛОКИРОВКА (bit 63) = 0  <- 1 значит BIOS запретил менять лимиты через MSR
+PKG_POWER_INFO 0x614: TDP = 15.00 Вт
+TURBO_RATIO_LIMIT 0x1AD: 1яд=3600МГц, 2яд=3600МГц, 3яд=3300МГц, 4яд=3300МГц
+PACKAGE_THERM_STATUS: до Tjmax осталось 36 °C, лог троттлинга по t=0, по мощности=1
+CORE_PERF_LIMIT_REASONS 0x64F = 0x15030100 (причины ограничения частоты, лог-биты 31:16)
+
+===== Термозоны =====
+thermal_zone0: type=acpitz temp=63000 policy=step_wise
+    trip_point_0_temp = 100000 (hot)
+    trip_point_1_temp = 99000 (passive)
+thermal_zone1: type=SEN1 temp=49050 policy=step_wise
+    trip_point_0_temp = -274000 (passive)
+    trip_point_1_temp = -274000 (passive)
+    trip_point_2_temp = -274000 (critical)
+    trip_point_3_temp = -274000 (hot)
+    trip_point_4_temp = 96050 (passive)
+    trip_point_5_temp = -274000 (active)
+thermal_zone2: type=INT3400 Thermal temp=20000 policy=step_wise
+thermal_zone3: type=B0D4 temp=63050 policy=step_wise
+    trip_point_0_temp = -274000 (critical)
+    trip_point_1_temp = 99050 (hot)
+    trip_point_2_temp = 96050 (passive)
+    trip_point_3_temp = -274000 (active)
+    trip_point_4_temp = -274000 (active)
+    trip_point_5_temp = -274000 (active)
+    trip_point_6_temp = -274000 (active)
+    trip_point_7_temp = -274000 (active)
+thermal_zone4: type=x86_pkg_temp temp=62000 policy=step_wise
+    trip_point_0_temp = -274000 (passive)
+    trip_point_1_temp = -274000 (passive)
+
+===== Устройства охлаждения =====
+cooling_device0: type=Processor cur=0 max=10 [w]
+cooling_device1: type=Processor cur=0 max=10 [w]
+cooling_device2: type=Processor cur=0 max=10 [w]
+cooling_device3: type=Processor cur=0 max=10 [w]
+cooling_device4: type=Processor cur=0 max=10 [w]
+cooling_device5: type=Processor cur=0 max=10 [w]
+cooling_device6: type=Processor cur=0 max=10 [w]
+cooling_device7: type=Processor cur=0 max=10 [w]
+cooling_device8: type=intel_powerclamp cur=0 max=100 [w]
+cooling_device9: type=TCC Offset cur=5 max=63 [w]
+intel_rapl_msr         24576  0
+intel_tcc_cooling      12288  0
+x86_pkg_temp_thermal    16384  0
+coretemp               24576  0
+intel_rapl_common      57344  2 intel_rapl_msr,processor_thermal_rapl
+int340x_thermal_zone    16384  2 int3403_thermal,processor_thermal_device
+
+===== hwmon (датчики) =====
+--- hwmon0: ADP1
+--- hwmon1: acpitz
+  temp1_input  = 60000
+--- hwmon2: BAT0
+  curr1_input  = 
+  in0_input  = 10263
+--- hwmon3: nvme
+  temp1_input Composite = 33850
+--- hwmon4: hp
+/sys/class/hwmon/hwmon4/pwm1_enable = 2  [w]
+--- hwmon5: coretemp
+  temp1_input Package id 0 = 61000
+  temp2_input Core 0 = 61000
+  temp3_input Core 1 = 60000
+  temp4_input Core 2 = 58000
+  temp5_input Core 3 = 57000
+
+===== Встроенная графика =====
+--- /sys/class/drm/card1
+/sys/bus/pci/drivers/i915
+0x8086 0x8a56 
+/sys/class/drm/card1/gt_cur_freq_mhz = 950  [w]
+/sys/class/drm/card1/gt_act_freq_mhz = 450  [w]
+/sys/class/drm/card1/gt_min_freq_mhz = 300  [w]
+/sys/class/drm/card1/gt_max_freq_mhz = 1050  [w]
+/sys/class/drm/card1/gt_boost_freq_mhz = 1050  [w]
+/sys/class/drm/card1/gt_RP0_freq_mhz = 1050  [w]
+/sys/class/drm/card1/gt_RP1_freq_mhz = 500  [w]
+/sys/class/drm/card1/gt_RPn_freq_mhz = 300  [w]
+intel_gpu_top: нет (пакет intel-gpu-tools)
+
+===== Управление питанием: демоны =====
+power-profiles-daemon  active / enabled
+tlp                    inactive / not-found
+auto-cpufreq           inactive / not-found
+tuned                  inactive / not-found
+thermald               inactive / not-found
+throttled              inactive / not-found
+intel-undervolt        inactive / disabled
+client: 0.30
+daemon: 0.30
+* performance:
+    CpuDriver:	intel_pstate
+    Degraded:   no
+
+  balanced:
+    CpuDriver:	intel_pstate
+    PlatformDriver:	placeholder
+
+  power-saver:
+    CpuDriver:	intel_pstate
+    PlatformDriver:	placeholder
+[State]
+battery_aware=true
+CpuDriver=intel_pstate
+PlatformDriver=placeholder
+Profile=performance
+
+[Actions]
+trickle_charge=true
+amdgpu_panel_power=false
+amdgpu_dpm=false
+
+===== Питание: батарея / сеть =====
+--- /sys/class/power_supply/ADP1
+/sys/class/power_supply/ADP1/type = Mains  [w]
+/sys/class/power_supply/ADP1/online = 0  [w]
+--- /sys/class/power_supply/BAT0
+/sys/class/power_supply/BAT0/type = Battery  [w]
+/sys/class/power_supply/BAT0/status = Discharging  [w]
+/sys/class/power_supply/BAT0/capacity = 11  [w]
+/sys/class/power_supply/BAT0/current_now = cat: /sys/class/power_supply/BAT0/current_now: Нет такого устройства  [w]
+/sys/class/power_supply/BAT0/voltage_now = 10263000  [w]
+/sys/class/power_supply/BAT0/cycle_count = 0  [w]
+
+===== Платформенные профили (ACPI) =====
+
+===== Нужные утилиты =====
+turbostat      /usr/bin/turbostat
+powertop       НЕТ
+rdmsr          НЕТ
+wrmsr          НЕТ
+intel_gpu_top  НЕТ
+sensors        /usr/bin/sensors
+btop           /usr/bin/btop
+python3        /usr/bin/python3
+python 3.14.9
+py:gi есть
+py:textual нет
+py:rich нет
+py:psutil есть
+
+===== Готово =====
+Файл: /home/mors/Проекты/cpu-power-tuner/probe/../results/probe--20261113-093201.txt

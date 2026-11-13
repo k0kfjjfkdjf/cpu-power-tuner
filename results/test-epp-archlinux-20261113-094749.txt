@@ -1,0 +1,15 @@
+Пт 13 ноя 2026 09:47:49 +05 |  Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz | ядро 7.2.14-zen1-1-zen
+
+########## ТЕСТ: epp power ##########
+профиль ppd: balanced | питание от сети: 1
+  было: /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference = balance_performance
+  [ДО] нагрузка 15 с на 8 потоков...
+    мощность пакета: 24.90 Вт | ср. частота CPU: 2527 МГц | макс. t: 97 °C | iGPU: 313 МГц
+  записано 'power' в 8 файл(ов), сейчас: /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference = power
+  [ПОСЛЕ EPP=power] нагрузка 15 с на 8 потоков...
+    мощность пакета: 9.56 Вт | ср. частота CPU: 1299 МГц | макс. t: 74 °C | iGPU: 430 МГц
+  жду 30 с без нагрузки, не откатит ли кто-то значение...
+  через 30 с: /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference = power (держится)
+  возвращено: /sys/devices/system/cpu/cpu0/cpufreq/energy_performance_preference = balance_performance
+
+Готово. Лог: /home/mors/Проекты/cpu-power-tuner/tests/../results/test-epp-archlinux-20261113-094749.txt

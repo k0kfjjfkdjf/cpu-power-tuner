@@ -1,0 +1,17 @@
+Пт 13 ноя 2026 09:39:01 +05 |  Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz | ядро 7.2.14-zen1-1-zen
+
+########## ТЕСТ: tcc 50 ##########
+профиль ppd: performance | питание от сети: 0
+MSR 0x1A2: Tjmax=100 offset=5 lock=0
+  [ДО] нагрузка 15 с на 8 потоков...
+    мощность пакета: 15.57 Вт | ср. частота CPU: 1930 МГц | макс. t: 80 °C | iGPU: 303 МГц
+  запись /sys/class/thermal/cooling_device9/cur_state = 50 -> прочитано: 50 OK
+MSR 0x1A2: Tjmax=100 offset=50 lock=0
+  [ПОСЛЕ offset 50 (троттлинг с 50 °C)] нагрузка 15 с на 8 потоков...
+    мощность пакета: 7.02 Вт | ср. частота CPU: 231 МГц | макс. t: 63 °C | iGPU: 100 МГц
+  жду 30 с без нагрузки, не откатит ли кто-то значение...
+  через 30 с: /sys/class/thermal/cooling_device9/cur_state = 50 (держится)
+  вернул /sys/class/thermal/cooling_device9/cur_state = 5
+MSR 0x1A2: Tjmax=100 offset=5 lock=0
+
+Готово. Лог: /home/mors/Проекты/cpu-power-tuner/tests/../results/test-tcc-archlinux-20261113-093901.txt

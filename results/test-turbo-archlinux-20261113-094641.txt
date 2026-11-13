@@ -1,0 +1,15 @@
+Пт 13 ноя 2026 09:46:41 +05 |  Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz | ядро 7.2.14-zen1-1-zen
+
+########## ТЕСТ: turbo  ##########
+профиль ppd: balanced | питание от сети: 1
+  было: /sys/devices/system/cpu/intel_pstate/no_turbo = 0
+  [ДО] нагрузка 15 с на 8 потоков...
+    мощность пакета: 23.88 Вт | ср. частота CPU: 2459 МГц | макс. t: 96 °C | iGPU: 333 МГц
+  записано '1' в 1 файл(ов), сейчас: /sys/devices/system/cpu/intel_pstate/no_turbo = 1
+  [ПОСЛЕ no_turbo=1] нагрузка 15 с на 8 потоков...
+    мощность пакета: 8.18 Вт | ср. частота CPU: 999 МГц | макс. t: 71 °C | iGPU: 336 МГц
+  жду 30 с без нагрузки, не откатит ли кто-то значение...
+  через 30 с: /sys/devices/system/cpu/intel_pstate/no_turbo = 1 (держится)
+  возвращено: /sys/devices/system/cpu/intel_pstate/no_turbo = 0
+
+Готово. Лог: /home/mors/Проекты/cpu-power-tuner/tests/../results/test-turbo-archlinux-20261113-094641.txt

@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=CPU Power Tuner
+GenericName=Управление питанием CPU
+Comment=Мониторинг ядер и пресеты лимитов для профилей питания
+Exec=cpu-power-tuner
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Monitor;Settings;
+Keywords=cpu;power;rapl;tdp;throttle;battery;

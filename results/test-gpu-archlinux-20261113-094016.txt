@@ -1,0 +1,15 @@
+Пт 13 ноя 2026 09:40:16 +05 |  Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz | ядро 7.2.14-zen1-1-zen
+
+########## ТЕСТ: gpu 500 ##########
+профиль ppd: performance | питание от сети: 0
+  было: max=1050 boost=1050 RPn..RP0=300..1050
+  запись /sys/class/drm/card1/gt_boost_freq_mhz = 500 -> прочитано: 500 OK
+  запись /sys/class/drm/card1/gt_max_freq_mhz = 500 -> прочитано: 500 OK
+  (нагрузку на GPU скрипт не создаёт: если хотите проверить, запустите видео/glxgears и смотрите iGPU в замере)
+    мощность пакета: 5.69 Вт | ср. частота CPU: 1219 МГц | макс. t: 62 °C | iGPU: 160 МГц
+  жду 30 с без нагрузки, не откатит ли кто-то значение...
+  через 30 с: /sys/class/drm/card1/gt_max_freq_mhz = 500 (держится)
+  вернул /sys/class/drm/card1/gt_max_freq_mhz = 1050
+  вернул /sys/class/drm/card1/gt_boost_freq_mhz = 1050
+
+Готово. Лог: /home/mors/Проекты/cpu-power-tuner/tests/../results/test-gpu-archlinux-20261113-094016.txt

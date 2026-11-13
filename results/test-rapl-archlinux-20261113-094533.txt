@@ -1,0 +1,20 @@
+Пт 13 ноя 2026 09:45:33 +05 |  Intel(R) Core(TM) i5-1035G1 CPU @ 1.00GHz | ядро 7.2.14-zen1-1-zen
+
+########## ТЕСТ: rapl 8 ##########
+профиль ppd: balanced | питание от сети: 1
+  было: PL1=19000000 PL2=40000000
+MSR 0x610: PL1=19.00W PL2=40.00W lock=0
+  [ДО] нагрузка 15 с на 8 потоков...
+    мощность пакета: 24.42 Вт | ср. частота CPU: 2480 МГц | макс. t: 96 °C | iGPU: 333 МГц
+  запись /sys/class/powercap/intel-rapl:0/constraint_1_power_limit_uw = 8000000 -> прочитано: 8000000 OK
+  запись /sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw = 8000000 -> прочитано: 8000000 OK
+MSR 0x610: PL1=8.00W PL2=8.00W lock=0
+  [ПОСЛЕ 8 Вт] нагрузка 15 с на 8 потоков...
+    мощность пакета: 8.55 Вт | ср. частота CPU: 1078 МГц | макс. t: 71 °C | iGPU: 303 МГц
+  жду 30 с без нагрузки, не откатит ли кто-то значение...
+  через 30 с: /sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw = 8000000 (держится)
+  вернул /sys/class/powercap/intel-rapl:0/constraint_1_power_limit_uw = 40000000
+  вернул /sys/class/powercap/intel-rapl:0/constraint_0_power_limit_uw = 19000000
+MSR 0x610: PL1=19.00W PL2=40.00W lock=0
+
+Готово. Лог: /home/mors/Проекты/cpu-power-tuner/tests/../results/test-rapl-archlinux-20261113-094533.txt

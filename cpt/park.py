@@ -100,7 +100,10 @@ def restore_saved_pins(path):
         for e in data.get("pins", []):
             pinned, orig = set(e["set"]), set(e["orig"])
             if e.get("tid") and _start_of(e["tid"]) == e.get("start"):
-                tids = os.listdir(f"/proc/{e['tid']}/task") if e.get("whole_process") else [e["tid"]]
+                try:
+                    tids = os.listdir(f"/proc/{e['tid']}/task") if e.get("whole_process") else [e["tid"]]
+                except OSError:
+                    tids = []  # процесс уже завершился
                 for t in tids:
                     try:
                         if os.sched_getaffinity(int(t)) == pinned:

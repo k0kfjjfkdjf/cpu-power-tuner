@@ -325,7 +325,10 @@ class Tuner:
         self.apply(self.targets(), "возврат откаченных значений")
 
     def run(self, stop):
-        self.unpin("старт службы")  # следы прошлых запусков (сбой, старая версия)
+        try:
+            self.unpin("старт службы")  # следы прошлых запусков (сбой, старая версия)
+        except Exception:  # уборка не должна мешать запуску
+            log.exception("уборка привязок при старте")
         self.update_power()
         if not self.poll_ppd() and self.profile is None:  # ppd есть, но профиль не прочитался
             log.warning("не найден профиль ppd (%s), беру balanced", hw.PPD_STATE)

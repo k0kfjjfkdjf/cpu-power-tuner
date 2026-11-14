@@ -1,7 +1,8 @@
 [Unit]
 Description=CPU Power Tuner: пресеты лимитов CPU для профилей power-profiles-daemon
-After=power-profiles-daemon.service
-Wants=power-profiles-daemon.service
+# Без After=power-profiles-daemon.service: в ppd 0.30 он сам запускается после multi-user.target,
+# и такая зависимость давала цикл — systemd выкидывал нашу службу при загрузке.
+# Ждать ppd не нужно: служба читает его state.ini и перепроверяет EPP каждые 5 с.
 
 [Service]
 Type=simple
